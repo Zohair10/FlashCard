@@ -1,4 +1,6 @@
-"use client";
+"use client";  // Add this line at the top
+
+import React, { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { useRouter } from 'next/navigation'; // Use next/navigation in Next.js 13
 import { ClerkProvider, useClerk } from '@clerk/nextjs'; // Import useClerk from @clerk/nextjs
@@ -7,6 +9,10 @@ const UserDashboard = () => {
   const { isSignedIn } = useUser();
   const { signOut } = useClerk(); // Use useClerk to access signOut method
   const router = useRouter();
+
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [topic, setTopic] = useState('');
+  const [flashcards, setFlashcards] = useState([]);
 
   if (!isSignedIn) {
     // Redirect to sign-in page if user is not signed in
@@ -18,6 +24,24 @@ const UserDashboard = () => {
     e.preventDefault();
     await signOut(); // Sign out the user
     router.push('/'); // Redirect to the sign-in page after signing out
+  };
+
+  const handleCreateFlashcard = async () => {
+    if (!topic) return;
+
+    const response = await fetch('/api/create-flashcard', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ title: topic }),
+    });
+
+    const data = await response.json();
+    
+    setFlashcards([...flashcards, { title: data.title, content: data.content }]); // Add new flashcard to the list
+    setIsModalOpen(false); // Close the modal after creating the flashcard
+    setTopic(''); // Clear the input field
   };
 
   return (
@@ -45,12 +69,12 @@ const UserDashboard = () => {
             <div className="bg-white p-6 rounded-lg shadow">
               <h3 className="text-xl font-semibold text-gray-800 mb-4">Create Flashcard</h3>
               <p className="text-gray-600 mb-4">Design and create your own flashcards to help others learn.</p>
-              <a
-                href="/create-flashcard"
+              <button
+                onClick={() => setIsModalOpen(true)}
                 className="inline-block bg-indigo-600 text-white py-2 px-4 rounded-lg shadow hover:bg-indigo-700"
               >
                 Create Now
-              </a>
+              </button>
             </div>
 
             <div className="bg-white p-6 rounded-lg shadow">
@@ -75,6 +99,19 @@ const UserDashboard = () => {
               </a>
             </div>
           </div>
+
+          {/* Display the created flashcards */}
+          <section className="mt-8">
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">Your Flashcards</h2>
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {flashcards.map((flashcard, index) => (
+                <div key={index} className="bg-white p-6 rounded-lg shadow">
+                  <h3 className="text-xl font-semibold text-gray-800 mb-4">{flashcard.title}</h3>
+                  <p className="text-gray-600">{flashcard.content}</p>
+                </div>
+              ))}
+            </div>
+          </section>
 
           <section className="mt-8">
             <h2 className="text-2xl font-bold text-gray-900 mb-4">Categories</h2>
@@ -105,6 +142,35 @@ const UserDashboard = () => {
           <p>&copy; 2024 Flashcard Maker. All rights reserved.</p>
         </div>
       </footer>
+
+      {isModalOpen && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center">
+          <div className="bg-white p-6 rounded-lg shadow-lg">
+            <h2 className="text-xl font-semibold mb-4">Enter Flashcard Topic</h2>
+            <input
+              type="text"
+              value={topic}
+              onChange={(e) => setTopic(e.target.value)}
+              className="border border-gray-300 p-2 rounded mb-4 w-full"
+              placeholder="Enter topic"
+            />
+            <div className="flex justify-end">
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="bg-gray-300 text-gray-700 py-2 px-4 rounded-lg mr-2"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleCreateFlashcard}
+                className="bg-indigo-600 text-white py-2 px-4 rounded-lg"
+              >
+                Create
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
